@@ -184,6 +184,7 @@ void AnimationPlayer::_get_property_list(List<PropertyInfo> *p_list) const {
 }
 
 void AnimationPlayer::advance(float p_time) {
+	playback.advanced = true;
 	_animation_process(p_time);
 }
 
@@ -341,7 +342,7 @@ void AnimationPlayer::_ensure_node_caches(AnimationData *p_anim, Node *p_root_ov
 	}
 }
 
-void AnimationPlayer::_animation_process_animation(AnimationData *p_anim, double p_time, double p_delta, float p_interp, bool p_is_current, bool p_seeked, bool p_started) {
+void AnimationPlayer::_animation_process_animation(AnimationData *p_anim, double p_time, double p_delta, float p_interp, bool p_is_current, bool p_seeked, bool p_started, bool p_advanced) {
 	_ensure_node_caches(p_anim);
 	ERR_FAIL_COND(p_anim->node_cache.size() != p_anim->animation->get_track_count());
 
@@ -616,7 +617,7 @@ void AnimationPlayer::_animation_process_animation(AnimationData *p_anim, double
 					continue;
 				}
 
-				if (p_seeked) {
+				if (p_seeked || p_advanced) {
 					//find whatever should be playing
 					int idx = a->track_find_key(i, p_time);
 					if (idx < 0) {
@@ -777,7 +778,7 @@ void AnimationPlayer::_animation_process_animation(AnimationData *p_anim, double
 	}
 }
 
-void AnimationPlayer::_animation_process_data(PlaybackData &cd, double p_delta, float p_blend, bool p_seeked, bool p_started) {
+void AnimationPlayer::_animation_process_data(PlaybackData &cd, double p_delta, float p_blend, bool p_seeked, bool p_started, bool p_advanced) {
 	double delta = p_delta * speed_scale * cd.speed_scale;
 	double next_pos = cd.pos + delta;
 
@@ -821,7 +822,7 @@ void AnimationPlayer::_animation_process_data(PlaybackData &cd, double p_delta, 
 
 	cd.pos = next_pos;
 
-	_animation_process_animation(cd.from, cd.pos, delta, p_blend, &cd == &playback.current, p_seeked, p_started);
+	_animation_process_animation(cd.from, cd.pos, delta, p_blend, &cd == &playback.current, p_seeked, p_started, p_advanced);
 }
 
 void AnimationPlayer::_animation_process2(double p_delta, bool p_started) {
@@ -829,7 +830,7 @@ void AnimationPlayer::_animation_process2(double p_delta, bool p_started) {
 
 	accum_pass++;
 
-	_animation_process_data(c.current, p_delta, 1.0f, c.seeked && p_delta != 0, p_started);
+	_animation_process_data(c.current, p_delta, 1.0f, c.seeked && p_delta != 0, p_started, c.advanced);
 	if (p_delta != 0) {
 		c.seeked = false;
 	}
@@ -838,7 +839,7 @@ void AnimationPlayer::_animation_process2(double p_delta, bool p_started) {
 	for (List<Blend>::Element *E = c.blend.back(); E; E = prev) {
 		Blend &b = E->get();
 		float blend = b.blend_left / b.blend_time;
-		_animation_process_data(b.data, p_delta, blend, false, false);
+		_animation_process_data(b.data, p_delta, blend, false, false, false);
 
 		b.blend_left -= Math::absf(speed_scale * p_delta);
 
@@ -936,6 +937,10 @@ void AnimationPlayer::_animation_process(double p_delta) {
 
 		if (playback.started) {
 			playback.started = false;
+		}
+
+		if (playback.advanced) {
+			playback.advanced = false;
 		}
 
 		_animation_update_transforms();
@@ -1203,6 +1208,7 @@ void AnimationPlayer::play(const StringName &p_name, float p_custom_blend, float
 	c.assigned = name;
 	c.seeked = false;
 	c.started = true;
+	c.advanced = false;
 
 	if (!end_reached) {
 		queued.clear();

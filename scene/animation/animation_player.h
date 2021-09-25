@@ -199,6 +199,7 @@ private:
 		StringName assigned;
 		bool seeked = false;
 		bool started = false;
+		bool advanced = false;
 	} playback;
 
 	List<StringName> queued;
@@ -215,10 +216,10 @@ private:
 
 	NodePath root;
 
-	void _animation_process_animation(AnimationData *p_anim, double p_time, double p_delta, float p_interp, bool p_is_current = true, bool p_seeked = false, bool p_started = false);
+	void _animation_process_animation(AnimationData *p_anim, double p_time, double p_delta, float p_interp, bool p_is_current = true, bool p_seeked = false, bool p_started = false, bool p_advanced = false);
 
 	void _ensure_node_caches(AnimationData *p_anim, Node *p_root_override = nullptr);
-	void _animation_process_data(PlaybackData &cd, double p_delta, float p_blend, bool p_seeked, bool p_started);
+	void _animation_process_data(PlaybackData &cd, double p_delta, float p_blend, bool p_seeked, bool p_started, bool p_advanced);
 	void _animation_process2(double p_delta, bool p_started);
 	void _animation_update_transforms();
 	void _animation_process(double p_delta);
